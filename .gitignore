@@ -21,3 +21,6 @@ logs
 # Slurm
 **/slurm*
 **/bash_*.sh
+
+# macOS
+.DS_Store
