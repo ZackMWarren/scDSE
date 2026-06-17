@@ -8,7 +8,16 @@ from .diffusion import compute_diffusion_matrix
 
 
 def diffusion_spectral_entropy(embedding_vectors: np.array,
-                               gaussian_kernel_sigma: float = 10,
+                               n_pca: int = 100,
+                               n_landmark: int = 2000,
+                               knn_dist: str = "euclidean",
+                               precomputed=None,
+                               knn: int = 5,
+                               knn_max=None,
+                               decay: int = 40,
+                               n_jobs: int = 1,
+                               random_state=None,
+                               thresh: float = 1e-4,
                                t: int = 1,
                                max_N: int = 10000,
                                chebyshev_approx: bool = False,
@@ -40,10 +49,44 @@ def diffusion_spectral_entropy(embedding_vectors: np.array,
             N: number of data points / samples
             D: number of feature dimensions of the neural representation
 
-        gaussian_kernel_sigma: float
-            The bandwidth of Gaussian kernel (for computation of the diffusion matrix)
-            Can be adjusted per the dataset.
-            Increase if the data points are very far away from each other.
+        n_pca: int
+            Number of principal components to use for graph construction.
+            Passed to `graphtools.Graph`.
+
+        n_landmark: int
+            Number of landmarks for landmark graph approximation.
+            Set to None to disable landmarking.
+            Passed to `graphtools.Graph`.
+
+        knn_dist: str
+            Distance metric used for nearest-neighbor graph construction.
+            Passed to `graphtools.Graph` as `distance`.
+
+        precomputed: str or None
+            If the input is a precomputed affinity/distance/adjacency matrix,
+            specify which one. Passed to `graphtools.Graph`.
+
+        knn: int
+            Number of nearest neighbors for graph construction.
+            Passed to `graphtools.Graph`.
+
+        knn_max: int or None
+            Maximum number of neighbors to compute (for adaptive bandwidth).
+            Passed to `graphtools.Graph`.
+
+        decay: int
+            Alpha-decay kernel decay rate. Passed to `graphtools.Graph`.
+
+        n_jobs: int
+            Number of parallel jobs for graph construction.
+            Passed to `graphtools.Graph`.
+
+        random_state: int or None
+            Random seed for graph construction. Passed to `graphtools.Graph`.
+
+        thresh: float
+            Threshold below which affinity values are set to zero.
+            Passed to `graphtools.Graph`.
 
         t: int
             Power of diffusion matrix (equivalent to power of diffusion eigenvalues)
@@ -102,7 +145,17 @@ def diffusion_spectral_entropy(embedding_vectors: np.array,
             if verbose: print('Computing diffusion matrix.')
             # Compute diffusion matrix `P`.
             K = compute_diffusion_matrix(embedding_vectors,
-                                         sigma=gaussian_kernel_sigma)
+                                         n_pca=n_pca,
+                                         n_landmark=n_landmark,
+                                         knn_dist=knn_dist,
+                                         precomputed=precomputed,
+                                         knn=knn,
+                                         knn_max=knn_max,
+                                         decay=decay,
+                                         n_jobs=n_jobs,
+                                         verbose=int(verbose),
+                                         random_state=random_state,
+                                         thresh=thresh)
             # Row normalize to get proper row stochastic matrix P
             D_inv = np.diag(1.0 / np.sum(K, axis=1))
             P = D_inv @ K
@@ -126,9 +179,19 @@ def diffusion_spectral_entropy(embedding_vectors: np.array,
 
             else:
                 if verbose: print('Computing diffusion matrix.')
-                # Note that `K` is a symmetric matrix with the same eigenvalues as the diffusion matrix `P`.
+                # Note that `K` is the diffusion operator `P` from graphtools.
                 K = compute_diffusion_matrix(embedding_vectors,
-                                             sigma=gaussian_kernel_sigma)
+                                             n_pca=n_pca,
+                                             n_landmark=n_landmark,
+                                             knn_dist=knn_dist,
+                                             precomputed=precomputed,
+                                             knn=knn,
+                                             knn_max=knn_max,
+                                             decay=decay,
+                                             n_jobs=n_jobs,
+                                             verbose=int(verbose),
+                                             random_state=random_state,
+                                             thresh=thresh)
                 if verbose: print('Diffusion matrix computed.')
 
                 if verbose: print('Computing eigenvalues.')

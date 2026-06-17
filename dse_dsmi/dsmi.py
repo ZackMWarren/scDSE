@@ -183,7 +183,6 @@ def diffusion_spectral_mutual_information(
 
         entropy_AgivenB_curr_class = diffusion_spectral_entropy(
             embedding_vectors=embeddings_curr_class,
-            gaussian_kernel_sigma=gaussian_kernel_sigma,
             t=t,
             chebyshev_approx=chebyshev_approx,
             classic_shannon_entropy=classic_shannon_entropy,
@@ -202,7 +201,6 @@ def diffusion_spectral_mutual_information(
 
             entropy_A_subsample_rep = diffusion_spectral_entropy(
                 embedding_vectors=embeddings_random_subset,
-                gaussian_kernel_sigma=gaussian_kernel_sigma,
                 t=t,
                 chebyshev_approx=chebyshev_approx,
                 classic_shannon_entropy=classic_shannon_entropy,

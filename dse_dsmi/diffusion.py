@@ -1,36 +1,54 @@
 import numpy as np
-from sklearn.metrics import pairwise_distances
-import warnings
+import graphtools
+from scipy import sparse
 
-warnings.filterwarnings("ignore")
-
-
-def compute_diffusion_matrix(X: np.array, sigma: float = 10.0):
+def compute_diffusion_matrix(
+    X: np.array,
+    n_pca = 100,
+    n_landmark = 2000,
+    knn_dist = "euclidean",
+    precomputed = None,
+    knn = 5,
+    knn_max = None,
+    decay = 40,
+    n_jobs = 1,
+    verbose = 1,
+    random_state = None,
+    thresh=1e-4,):
     '''
-    Adapted from
-    https://github.com/professorwug/diffusion_curvature/blob/master/diffusion_curvature/core.py
-
-    Given input X returns a diffusion matrix P, as an numpy ndarray.
-    Using the "anisotropic" kernel
-    Inputs:
-        X: a numpy array of size n x d
-        sigma: a float
-            conceptually, the neighborhood size of Gaussian kernel.
-    Returns:
-        K: a numpy array of size n x n that has the same eigenvalues as the diffusion matrix.
+    Taken from graphtools. Mimics PHATE's diffusion op
     '''
+    n_samples = X.shape[0]
 
-    # Construct the distance matrix.
-    D = pairwise_distances(X)
+    # graphtools requires n_landmark < n_samples; disable landmarking otherwise.
+    if n_landmark is not None and n_landmark >= n_samples:
+        n_landmark = None
 
-    # Gaussian kernel
-    G = (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp((-D**2) / (2 * sigma**2))
+    # graphtools requires n_pca < min(n_samples, n_features); disable otherwise.
+    if n_pca is not None and n_pca >= min(X.shape):
+        n_pca = None
 
-    # Anisotropic density normalization.
-    Deg = np.diag(1 / np.sum(G, axis=1)**0.5)
-    K = Deg @ G @ Deg
+    graph_params = {
+        "n_pca": n_pca,
+        "n_landmark": n_landmark,
+        "distance": knn_dist,
+        "precomputed": precomputed,
+        "knn": knn,
+        "knn_max": knn_max,
+        "decay": decay,
+        "thresh": thresh,
+        "n_jobs": n_jobs,
+        "verbose": verbose,
+        "random_state": random_state,
+    }
+    graph = graphtools.Graph(X, **graph_params)
 
-    # Now K has the exact same eigenvalues as the diffusion matrix `P`
-    # which is defined as `P = D^{-1} K`, with `D = np.diag(np.sum(K, axis=1))`.
-
-    return K
+    if isinstance(graph, graphtools.graphs.LandmarkGraph):
+        diff_op = graph.landmark_op
+    else:
+        diff_op = graph.diff_aff
+    if sparse.issparse(diff_op):
+        diff_op = diff_op.toarray()
+        
+    return diff_op
+        
